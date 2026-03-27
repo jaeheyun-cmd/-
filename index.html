@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>솟아나라 별들반! (두더지 잡기)</title>
+    <style>
+        body { background: #fdfbfb; font-family: 'Nanum Gothic', sans-serif; text-align: center; margin: 0; padding: 10px; overflow: hidden; touch-action: manipulation; display: flex; flex-direction: column; align-items: center; height: 100vh; }
+        
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(9, 10, 15, 0.95); color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; padding: 20px; box-sizing: border-box; }
+        .overlay h1 { font-size: 26px; margin-bottom: 20px; line-height: 1.4; text-shadow: 0 0 10px #ffdd59; }
+        .overlay h2 { font-size: 18px; color: #ff9f43; margin-bottom: 20px; line-height: 1.5; font-weight: normal; }
+        .overlay p { font-size: 16px; margin-bottom: 10px; color: #ccc; }
+        .overlay .result-score { font-size: 22px; margin-bottom: 30px; font-weight: bold; }
+
+        /* 🌟 볼륨 안내 텍스트 애니메이션 */
+        .volume-notice {
+            font-size: 18px !important;
+            color: #ffdd59 !important;
+            font-weight: bold;
+            margin-bottom: 30px !important;
+            text-shadow: 0 0 8px rgba(255, 221, 89, 0.8);
+            animation: pulseText 1.5s infinite;
+        }
+        @keyframes pulseText { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.05); } }
+
+        .score-panel { font-size: 18px; font-weight: bold; margin-bottom: 10px; line-height: 1.5; display: none; width: 100%; max-width: 400px; z-index: 200; }
+        .timer-text { font-size: 22px; color: #e15f41; }
+
+        #top-banner { width: 100%; max-width: 400px; height: 15vh; background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%); position: relative; overflow: hidden; border-radius: 20px 20px 0 0; box-shadow: 0 -10px 20px rgba(0,0,0,0.3); display: none; z-index: 50; }
+        #ufo-top { font-size: 40px; position: absolute; top: 30%; left: 10%; animation: ufoFloatTop 3s ease-in-out infinite; opacity: 0.6; }
+        @keyframes ufoFloatTop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        #alien-top { font-size: 40px; position: absolute; top: 20%; right: 10%; animation: alienWaveTop 4s infinite; opacity: 0.6; }
+        @keyframes alienWaveTop { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(15deg); } }
+
+        #game-board { position: relative; width: 100%; max-width: 400px; aspect-ratio: 1 / 1; margin: 0 auto 10px; background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%); border: 6px solid #ffdd59; border-radius: 0 0 20px 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); display: none; overflow: hidden; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 15px; padding: 15px; box-sizing: border-box; z-index: 10; }
+        #game-board::before { content: '🌟 별들반 🌟'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; color: rgba(255, 255, 255, 0.15); font-weight: 900; white-space: nowrap; pointer-events: none; z-index: 0; }
+
+        .hole { position: relative; background: rgba(255, 255, 255, 0.05); border-radius: 50%; overflow: visible; box-shadow: inset 0 5px 15px rgba(0,0,0,0.7); z-index: 1; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; }
+
+        .target { position: absolute; width: 100%; height: 100%; background-size: cover; background-position: center; object-fit: cover; border-radius: 50%; cursor: pointer; z-index: 10; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.25, 1.5, 0.5, 1); }
+        .target.up { transform: translateY(0%); }
+        .name-tag { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); background: rgba(255, 255, 255, 0.9); padding: 2px 6px; border-radius: 8px; font-size: 12px; font-weight: bold; color: #333; white-space: nowrap; z-index: 11; }
+
+        .alien-kidnapper {
+            position: absolute;
+            top: -150%; left: 50%; transform: translateX(-50%); 
+            font-size: 110px; 
+            z-index: 20; opacity: 0; pointer-events: none;
+            transition: top 0.4s ease-out, opacity 0.4s;
+        }
+        .alien-kidnapper-lights { 
+            position: absolute; bottom: 5%; left: 10%; width: 10%; height: 10%;
+            background: rgba(255, 255, 0, 0.5); border-radius: 50%;
+            box-shadow: 20px 0 0 rgba(255, 255, 0, 0.5), 40px 0 0 rgba(255, 255, 0, 0.5), 60px 0 0 rgba(255, 255, 0, 0.5), 80px 0 0 rgba(255, 255, 0, 0.5);
+            animation: ufoLightsBlink 1s infinite alternate;
+        }
+        @keyframes ufoLightsBlink { 0% { opacity: 0.2; } 100% { opacity: 0.8; } }
+
+        .alien-kidnapper.descend {
+            top: 2%; 
+            opacity: 1;
+        }
+        
+        .target.kidnapped {
+            transform: scale(0.1) !important; 
+            opacity: 0;
+            transition: transform 0.6s ease-in, opacity 0.6s ease-in !important;
+        }
+
+        .alien-kidnapper.kidnapped {
+            transform: translate(-50%, -100px) scale(0.2) !important;
+            opacity: 0;
+            transition: transform 1.2s ease-in 0.3s, opacity 1.2s ease-in 0.3s !important; 
+        }
+
+        .btn { padding: 15px 40px; font-size: 20px; background: #ff4757; color: white; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 0 #cf3544; margin-top: 10px; z-index: 200; }
+        .btn:disabled { background: #ccc; box-shadow: 0 4px 0 #999; cursor: not-allowed; }
+        .btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 2px 0 #cf3544; }
+    </style>
+</head>
+<body>
+
+    <div id="start-screen" class="overlay">
+        <h1>별들반 아이들을 구해주세요!</h1>
+        <h2>잠시 후 20초간<br>외계인들의 공격이 시작됩니다!!!</h2>
+        <p class="volume-notice">🔊 게임 시작 전 기기의 볼륨을 높여주세요!</p>
+        <p id="loading-text">아이들 사진 불러오는 중...</p>
+        <button id="start-btn" class="btn" disabled>게임 시작!</button>
+    </div>
+
+    <div id="end-screen" class="overlay" style="display: none;">
+        <h1 id="end-title">성공!</h1>
+        <p>최종 구출 성공:</p>
+        <div id="end-score" class="result-score" style="color: #0984e3;">0</div>
+        <p>아쉽게 놓친 친구들:</p>
+        <div id="end-miss" class="result-score" style="color: #d63031;">0</div>
+        <button id="restart-btn" class="btn">다시 도전하기</button>
+    </div>
+
+    <div class="score-panel">
+        <span class="timer-text">⏳ 남은 시간: <span id="timer">20</span>초</span><br>
+        구출 성공: <span id="score" style="color: #0984e3;">0</span> | 
+        놓침: <span id="miss" style="color: #d63031;">0</span>/3
+    </div>
+
+    <div id="top-banner">
+        <div id="ufo-top">🛸</div>
+        <div id="alien-top">👽</div>
+    </div>
+
+    <div id="game-board">
+        <div class="hole" id="hole-0"></div><div class="hole" id="hole-1"></div><div class="hole" id="hole-2"></div>
+        <div class="hole" id="hole-3"></div><div class="hole" id="hole-4"></div><div class="hole" id="hole-5"></div>
+        <div class="hole" id="hole-6"></div><div class="hole" id="hole-7"></div><div class="hole" id="hole-8"></div>
+    </div>
+
+    <script>
+        const gameBoard = document.getElementById('game-board');
+        const topBanner = document.getElementById('top-banner');
+        const scorePanel = document.querySelector('.score-panel');
+        const scoreEl = document.getElementById('score');
+        const missEl = document.getElementById('miss');
+        const timerEl = document.getElementById('timer');
+        
+        const startScreen = document.getElementById('start-screen');
+        const startBtn = document.getElementById('start-btn');
+        const loadingText = document.getElementById('loading-text');
+        const endScreen = document.getElementById('end-screen');
+        const endTitle = document.getElementById('end-title');
+        const endScoreEl = document.getElementById('end-score');
+        const endMissEl = document.getElementById('end-miss');
+        const restartBtn = document.getElementById('restart-btn');
+
+        let score = 0, miss = 0, timeLeft = 20;
+        let gameRunning = false, countdown, spawnTimer, currentHole = null; 
+
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        
+        let bgmInterval;
+        const melody = [261.63, 329.63, 392.00, 329.63, 261.63, 392.00, 523.25, 392.00]; // 도 미 솔 미 도 솔 높은도 솔 (간단한 멜로디)
+        let noteIndex = 0;
+
+        function initAudio() { 
+            if (!audioCtx) audioCtx = new AudioContext(); 
+            if (audioCtx.state === 'suspended') audioCtx.resume(); 
+        }
+
+        function playBGMNote() {
+            if (!gameRunning || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.type = 'square'; // 레트로 게임 느낌의 사각파
+            osc.frequency.setValueAtTime(melody[noteIndex], audioCtx.currentTime);
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            gainNode.gain.setValueAtTime(0.02, audioCtx.currentTime); // 배경음악 볼륨(더 낮게)
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
+            
+            noteIndex = (noteIndex + 1) % melody.length;
+        }
+
+        function playSuccessSound() { 
+            if (!audioCtx) return; const osc = audioCtx.createOscillator(); const gainNode = audioCtx.createGain(); 
+            osc.type = 'sine'; osc.connect(gainNode); gainNode.connect(audioCtx.destination); 
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1); 
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2); 
+            osc.start(); osc.stop(audioCtx.currentTime + 0.2); 
+        }
+
+        function playFailSound() { 
+            if (!audioCtx) return; const osc = audioCtx.createOscillator(); const gainNode = audioCtx.createGain(); 
+            osc.type = 'triangle'; osc.connect(gainNode); gainNode.connect(audioCtx.destination); 
+            osc.frequency.setValueAtTime(300, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3); 
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3); 
+            osc.start(); osc.stop(audioCtx.currentTime + 0.3); 
+        }
+
+        function playGameOverFailSound() {
+            if (!audioCtx) return; const osc = audioCtx.createOscillator(); const gainNode = audioCtx.createGain();
+            osc.type = 'sawtooth'; osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+            osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 1.5); // 길게 떨어지는 소리
+            gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 1.5);
+            osc.start(); osc.stop(audioCtx.currentTime + 1.5);
+        }
+
+        const starClassKids = [
+            { name: "설아", img: "https://drive.google.com/thumbnail?id=1Rzc7hNGaMAkE_zu7pERbgyQXWz9oVGBC&sz=w200" },
+            { name: "해온", img: "https://drive.google.com/thumbnail?id=1ZT7OafHo12DCrDc0cV5fRJYvfutFiHr-&sz=w200" }, 
+            { name: "도훈", img: "https://drive.google.com/thumbnail?id=1V1SvuGR6VBJr9tOvYNo3WssJwu4_ybRA&sz=w200" },
+            { name: "채민", img: "https://drive.google.com/thumbnail?id=1YUospNTPBbNMQxe0w9N4YbM4jpwZR_oS&sz=w200" },
+            { name: "채현", img: "https://drive.google.com/thumbnail?id=1DZETlrXhZXhBcApil6NnOUZf8vzna9-W&sz=w200" },
+            { name: "민건", img: "https://drive.google.com/thumbnail?id=1Qc3CO5iF3rkSNWXoYBTwLZLzzY-4ew6r&sz=w200" },
+            { name: "도하", img: "https://drive.google.com/thumbnail?id=1jIRV2vY69BFOuAMfwYdgchd3T8ZrjSnE&sz=w200" },
+            { name: "아윤", img: "https://drive.google.com/thumbnail?id=1ofjHlHKO3Q24P2fRirepR-h3ag69R9ZQ&sz=w200" },
+            { name: "연준", img: "https://drive.google.com/thumbnail?id=1YTZICYTc9oBwSp-Qm9t-hXwLHCdhdsyC&sz=w200" }
+        ];
+
+        let loadedImages = 0;
+        function preloadImages() { 
+            starClassKids.forEach((kid) => { 
+                const img = new Image(); img.src = kid.img; 
+                img.onload = img.onerror = () => { 
+                    loadedImages++; 
+                    if (loadedImages === starClassKids.length) { loadingText.style.display = 'none'; startBtn.disabled = false; } 
+                }; 
+            }); 
+        }
+        preloadImages();
+
+        function spawnKid() {
+            if (!gameRunning) return;
+
+            let holeIndex;
+            do { holeIndex = Math.floor(Math.random() * 9); } while (holeIndex === currentHole);
+            currentHole = holeIndex;
+            const hole = document.getElementById(`hole-${holeIndex}`);
+            hole.innerHTML = ''; 
+
+            const randomKid = starClassKids[Math.floor(Math.random() * starClassKids.length)];
+
+            const target = document.createElement('div');
+            target.className = 'target';
+            target.style.backgroundImage = `url('${randomKid.img}')`;
+
+            const nameTag = document.createElement('div');
+            nameTag.className = 'name-tag';
+            nameTag.innerText = randomKid.name;
+            target.appendChild(nameTag);
+
+            const kidnapperAlien = document.createElement('div');
+            kidnapperAlien.className = 'alien-kidnapper';
+            kidnapperAlien.innerText = "🛸";
+            
+            const alienLights = document.createElement('div');
+            alienLights.className = 'alien-kidnapper-lights';
+            kidnapperAlien.appendChild(alienLights);
+
+            hole.appendChild(kidnapperAlien);
+            hole.appendChild(target);
+
+            setTimeout(() => target.classList.add('up'), 10);
+
+            let isHit = false;
+            let timeoutId;
+
+            target.onpointerdown = (e) => {
+                e.preventDefault();
+                if(isHit) return;
+                isHit = true;
+                clearTimeout(timeoutId); // 납치 타이머 정지
+                score++; scoreEl.innerText = score;
+                playSuccessSound();
+                
+                target.classList.remove('up');
+                setTimeout(() => { target.remove(); kidnapperAlien.remove(); }, 300); 
+            };
+
+            timeoutId = setTimeout(() => {
+                if (!isHit && gameRunning) {
+                    isHit = true; // 터치 방지
+                    target.classList.add('up'); 
+                    
+                    kidnapperAlien.classList.add('descend'); 
+
+                    setTimeout(() => {
+                        if (gameRunning) {
+                            target.classList.add('kidnapped');
+                            playFailSound();
+
+                            setTimeout(() => {
+                                kidnapperAlien.classList.add('kidnapped');
+
+                                setTimeout(() => {
+                                    target.remove(); kidnapperAlien.remove();
+                                    miss++; missEl.innerText = miss;
+                                    if (miss >= 3) { endGame('실패'); return; }
+                                }, 1200); 
+                            }, 300); 
+                        }
+                    }, 400); 
+                }
+            }, 1200);
+
+            spawnTimer = setTimeout(spawnKid, Math.random() * 500 + 400);
+        }
+
+        function startGame() {
+            initAudio();
+            startScreen.style.display = 'none'; endScreen.style.display = 'none';
+            score = 0; miss = 0; timeLeft = 20;
+            scoreEl.innerText = '0'; missEl.innerText = '0'; timerEl.innerText = timeLeft;
+            gameRunning = true;
+            
+            topBanner.style.display = 'flex'; 
+            gameBoard.style.display = 'grid'; 
+            scorePanel.style.display = 'block';
+            
+            for (let i = 0; i < 9; i++) { document.getElementById(`hole-${i}`).innerHTML = ''; }
+            
+            clearInterval(bgmInterval);
+            noteIndex = 0;
+            bgmInterval = setInterval(playBGMNote, 250);
+
+            spawnKid();
+            playSuccessSound();
+
+            countdown = setInterval(() => { 
+                timeLeft--; timerEl.innerText = timeLeft; 
+                if (timeLeft <= 0) endGame('타임오버'); 
+            }, 1000);
+        }
+
+        function endGame(reason) {
+            gameRunning = false;
+            clearInterval(countdown); clearTimeout(spawnTimer); clearInterval(bgmInterval); 
+            topBanner.style.display = 'none';
+            gameBoard.style.display = 'none';
+            scorePanel.style.display = 'none';
+            
+            endScoreEl.innerText = score; endMissEl.innerText = miss;
+
+            if (reason === '실패') {
+                endTitle.innerText = "실패!!!"; endTitle.style.textShadow = "0 0 10px #d63031"; endMissEl.style.color = "#d63031"; playGameOverFailSound(); 
+            } else {
+                endTitle.innerText = "성공!"; endTitle.style.textShadow = "0 0 10px #0984e3"; endMissEl.style.color = "#ccc";
+            }
+            endScreen.style.display = 'flex';
+        }
+
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+    </script>
+</body>
+</html>
